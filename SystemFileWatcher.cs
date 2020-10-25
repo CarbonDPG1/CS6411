@@ -1,15 +1,3 @@
-/*
-* Authors: Michael Redbourne, Tristan Carrier
-* Course: CS 6411
-* University: University of New Brunswick
-* Purpose: Monitor File System for changes to Azure DevOps Repo.
-*   Execute PoSh to gather hash information and upload to Threat Intelligence platforms for information
-*   If no information found, upload file for review.
-*   Fire custom Windows Event (CMD) if malicious results are returned. Otherwise, fire different custom event.
-*   XPath Query using IBM's WinCollect Agent for import to QRadar CE. 
-*   Custom Rule Engine (CRE) to detect when a malicious event is fired.
-*/
-
 using System;
 using System.IO;
 using System.Management.Automation;
@@ -31,44 +19,54 @@ namespace DirWatcher
             */
             using (FileSystemWatcher watcher = new FileSystemWatcher())
             {
-                string gitRepo = @"<path here>";
+                string gitRepo = @"C:\Users\Michael\Desktop\DirWatch";
                 watcher.Path = gitRepo;
                 watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
                 watcher.Filter = "*.*"; // Highly inefficient...
-
                 watcher.Changed += OnChanged;
-                watcher.Created += OnChanged;                
-                
+                watcher.Created += OnChanged;
+                watcher.EnableRaisingEvents = true;
+
+                while (Console.Read() != 'q') ;
+               
             }
 
 
         }
         private static void OnChanged(object source, FileSystemEventArgs e)
         {
+            Console.WriteLine("File changed");
             // Specify what is done when a file is changed, created
-            string fileName = e.Name;
-            string fullPath = e.FullPath;
+            var fileName = e.Name;
+            Console.WriteLine(fileName);
             int extIndex = fileName.LastIndexOf('.');
-            string extension = null;
+            Console.WriteLine(extIndex);
+            String extension = null;
+            Console.WriteLine(fileName.Length);
 
             //An index of -1 indicates the character wasn't found...
             if (extIndex > 0) {
-                for (int i = extIndex; extIndex <= fileName.Length; i++) {
-                    extension = String.Concat(fileName[i]);
-
+                for (int i = extIndex; i < fileName.Length; i++) {
+                    //Console.WriteLine("Index: " + i);
+                    //Console.WriteLine("Current Letter: " + fileName[i]);
+                    Console.Out.Flush();
+                    extension += String.Concat(fileName[i]);
                 }
             }
-            bool valid = extension.Contains("aspx") || extension.Contains("asp") || extension.Contains("ps1") || extension.Contains("php") || extension.Contains("py");
+            bool valid = extension.Contains("txt") || extension.Contains("asp") || extension.Contains("ps1") || extension.Contains("php") || extension.Contains("py");
 
-            if () {
+            if (valid) {
                 // Get file hash
                 PowerShell ps = PowerShell.Create();
                 ps.AddCommand("Get-FileHash");
-                ps.AddParameter(fullPath);
-                ps.Invoke();
+                ps.AddCommand("Path").AddParameter(e.FullPath);
+                ps.AddCommand("Algorithm").AddParameter("SHA1");
+                var results = ps.Invoke();
+
+                Console.WriteLine(results);
+                Console.Out.Flush();
 
                 // Upload to VirusTotal (or other platform)
-
 
             }
             Console.WriteLine($"File: {e.FullPath} {e.ChangeType}");
